@@ -13,9 +13,6 @@
 #include "sintable.h"
 #include "font.h"
 
-#define FRAMERATE 50
-#define MAX_GRAIN 500
-
 const unsigned char	MATSUMI[] = {
 //	 80,  77,  66,  80, 180,   0,   0,   0,   1,   0, 128,   0,  10,   0, 223, 119,
 //	160,   0,   0,   0,
@@ -92,8 +89,6 @@ void pceFontSetPos(int x, int y);
 void pceFontSetType(int type);
 void pceLCDTrans();
 int pcePadGet();
-
-#include "config.h"
 
 void pceAppInit(void)
 {

@@ -23,3 +23,9 @@
 
 #define PP_MODE_SINGLE 0
 #define PP_MODE_REPEAT 1
+
+#define FRAMERATE 50
+#define MAX_GRAIN 500
+
+int fullscreen = 0;
+int zoom = 4;
