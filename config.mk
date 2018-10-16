@@ -10,12 +10,12 @@ MANPREFIX = ${PREFIX}/share/man
 SDLINC = $(shell pkg-config --cflags sdl)
 SDLLIB = $(shell pkg-config --libs sdl)
 
-INCS = -I. -I/usr/include ${SDLINC}
-LIBS = -L/usr/lib -lc ${SDLLIB}
+INCS = -I. ${SDLINC}
+LIBS = -lc ${SDLLIB}
 
 # flags
-CFLAGS = -std=gnu99 -Wall -Werror ${INCS} -DVERSION=\"${VERSION}\"
-LDFLAGS = ${LIBS}
+CFLAGS = -m32 -Wall -Wextra -Wpedantic -Werror -O0 -g3 ${INCS} -DVERSION=\"${VERSION}\"
+LDFLAGS = -m32 -O0 -g3 ${LIBS}
 
 # compiler and linker
 CC = cc

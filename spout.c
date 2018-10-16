@@ -115,7 +115,7 @@ void pceAppInit(void)
 	srand(SDL_GetTicks());
 }
 
-void pceAppProc(int cnt)
+void pceAppProc()
 {
 	static int gamePhase = 0, gameover;
 
@@ -353,7 +353,7 @@ void pceAppProc(int cnt)
 			int i, j;
 
 			if((upperLine & 31) == 0) {
-				unsigned long *pL;
+				unsigned long *pL; // FIXME "unsigned long" changes size by platform
 				vBuffer = vbuff2 + ((upperLine - 24) & 127) * 128;
 				pceFontSetBkColor(0);
 
@@ -363,7 +363,7 @@ void pceAppProc(int cnt)
 						for(i = 0; i < 16; i ++) {
 							for(j = 0; j < 26 / 2; j ++) {
 								*pL = 0x91919191;
-								pL += 2;
+								pL += 2; // FIXME This is the line that breaks grainFreeLink
 							}
 							if((i & 7) == 3) {
 								pL += 7;
@@ -799,7 +799,7 @@ GRAIN *allocGrain(void)
 	GRAIN *current = grainFreeLink;
 
 	if(current) {
-		grainFreeLink = current->next;
+		grainFreeLink = current->next; // FIXME segfault when compiled as x86_64
 
 		current->next = grainUseLink;
 		current->prev = NULL;
@@ -863,10 +863,10 @@ void initSDL() {
 
 	{
 		static SDL_Color pltTbl[4] = {
-			{255, 255, 255},
-			{170, 170, 170},
-			{85, 85, 85},
-			{0, 0, 0}
+			{255, 255, 255, 0},
+			{170, 170, 170, 0},
+			{85, 85, 85, 0},
+			{0, 0, 0, 0}
 		};
 		SDL_SetColors(video, pltTbl, 0, 4);
 		SDL_SetColors(layer, pltTbl, 0, 4);
@@ -959,12 +959,12 @@ void pceFontSetPos(int x, int y)
 int pceFontPrintf(const char *fmt, ...)
 {
 	unsigned char *adr = vBuffer + font_posX + font_posY * 128;
-	char *pC;
-	char c[1024];
+	unsigned char *pC;
+	unsigned char c[1024];
 	va_list argp;
 
 	va_start(argp, fmt);
-	vsprintf(c, fmt, argp);
+	vsprintf((char*)c, fmt, argp);
 	va_end(argp);
 
 	pC = c;
@@ -1001,7 +1001,6 @@ int main(int argc, char *argv[])
 {
 	SDL_Event event;
 	long nextTick, wait;
-	int cnt = 0;
 	int i;
 	for(i = 1; i < argc; i++) {
 		switch(argv[i][1]) {
@@ -1033,11 +1032,10 @@ int main(int argc, char *argv[])
 			SDL_Delay(wait);
 		}
 
-		pceAppProc(cnt);
+		pceAppProc();
 	//	SDL_Flip(video);
 
 		nextTick += interval;
-		cnt ++;
 
 		if((keys[SDLK_ESCAPE] == SDL_PRESSED && (keys[SDLK_LSHIFT] == SDL_PRESSED || keys[SDLK_RSHIFT] == SDL_PRESSED)) || event.type == SDL_QUIT) {
 			exec = 0;
