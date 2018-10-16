@@ -1,0 +1,9 @@
+Dependencies
+------------
+
+* libSDL
+
+Install
+-------
+
+Edit config.mk to your liking, then run 'make install'
