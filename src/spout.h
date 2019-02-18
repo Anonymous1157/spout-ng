@@ -27,5 +27,32 @@
 #define FRAMERATE 50
 #define MAX_GRAIN 500
 
-int fullscreen = 0;
-int zoom = 4;
+typedef struct {
+	short x, y;
+} SVECTOR;
+
+typedef struct {
+	long x, y;
+} VECTOR;
+
+typedef struct tagGRAIN {
+	struct tagGRAIN	*next;
+	struct tagGRAIN	*prev;
+
+	SVECTOR s, v;
+	short pos;
+	unsigned char color;
+} GRAIN;
+
+void spout(int t, int x, int y);
+void sweep(unsigned char c1, unsigned char c2);
+void initGrain(void);
+GRAIN *allocGrain(void);
+GRAIN *freeGrain(GRAIN *current);
+int pceFontPrintf(const char *fmt, ... );
+void pceFontSetTxColor(int color);
+void pceFontSetBkColor(int color);
+void pceFontSetPos(int x, int y);
+void pceFontSetType(int type);
+void pceLCDTrans();
+int pcePadGet();

@@ -8,7 +8,7 @@ LDFLAGS = -m32 -O0 -g3 $(shell pkg-config --libs sdl)
 
 src/spout: src/spout.o
 
-src/spout.o: src/spout.c src/font.h src/sintable.h src/spout.h
+src/spout.o: src/spout.c src/font.h src/sintable.h src/spout.h src/matsumi.h
 
 clean:
 	${RM} src/spout.o src/spout

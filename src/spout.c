@@ -12,39 +12,7 @@
 #include "spout.h"
 #include "sintable.h"
 #include "font.h"
-
-const unsigned char	MATSUMI[] = {
-//	 80,  77,  66,  80, 180,   0,   0,   0,   1,   0, 128,   0,  10,   0, 223, 119,
-//	160,   0,   0,   0,
-	  0,   0,   0,   0,   0,   0,   0,  34,  56,  68,  10,   4,
-	 80, 129, 202,   0,   0,   0,   0,   0,   8,   0,   8,  34,  73, 255, 127, 223,
-	241, 241,  95,   0,   0,   0,   0,   0,   8,   0,   0,  71,  72, 254,  10,   5,
-	 67,  17,  68,   0,   1,   2,  59, 187, 137,  75, 136,  66, 164,  16,  81,  31,
-	 84, 225, 155,   0,   2,  25,  10, 168, 138,  74,  72, 135,  33, 255,  49,   5,
-	 97, 177,  78,   0,   2,  33,  58, 171, 142,  74,  72, 134,  32,  16,  23, 215,
-	 86,  77, 117,   0,   2,  33,  34, 170,   9,  74,  73,   2,  73, 255,  49,  21,
-	176,  33,  78,   0,   1,  26,  59, 187, 137,  50,  73,   2,  76,  40,  81,  28,
-	  0, 193, 181,   0,   0,   0,   0,   0,   0,   0,   0,   2, 245, 199,  23, 211,
-	240,  33,  12,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-	  0,   0,   0,   0
-};
-
-typedef struct {
-	short x, y;
-} SVECTOR;
-
-typedef struct {
-	long x, y;
-} VECTOR;
-
-typedef struct tagGRAIN {
-	struct tagGRAIN	*next;
-	struct tagGRAIN	*prev;
-
-	SVECTOR s, v;
-	short pos;
-	unsigned char color;
-} GRAIN;
+#include "matsumi.h"
 
 GRAIN *grainUseLink, *grainFreeLink;
 
@@ -77,18 +45,8 @@ int font_posX = 0, font_posY = 0, font_width = 4, font_height = 6;
 unsigned char font_fgcolor = 3, font_bgcolor = 0, font_bgclear = 0;
 const unsigned char *font_adr = FONT6;
 
-void spout(int t, int x, int y);
-void sweep(unsigned char c1, unsigned char c2);
-void initGrain(void);
-GRAIN *allocGrain(void);
-GRAIN *freeGrain(GRAIN *current);
-int pceFontPrintf(const char *fmt, ... );
-void pceFontSetTxColor(int color);
-void pceFontSetBkColor(int color);
-void pceFontSetPos(int x, int y);
-void pceFontSetType(int type);
-void pceLCDTrans();
-int pcePadGet();
+int fullscreen = 0;
+int zoom = 4;
 
 void pceAppInit(void)
 {
