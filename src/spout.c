@@ -14,33 +14,42 @@
 #include "font.h"
 #include "matsumi.h"
 
+/* Pointers to the first grain in the linked lists of
+used/active grains and unused grains respectively */
 GRAIN *grainUseLink, *grainFreeLink;
 
-unsigned char vbuff[128 * 88];
+unsigned char vbuff[GAME_WIDTH * GAME_HEIGHT]; // The internal representation of the screen
 unsigned char vbuff2[128 * 128];
 
+/* Preallocate space for all the grains
+(This space gets used like a linked list later) */
 GRAIN grain[MAX_GRAIN];
-GRAIN *v2g[128 * 128];
+
+GRAIN *v2g[128 * 128]; // wtf
 
 SVECTOR box;
 
 VECTOR mPos, mSpeed;
 int mR;
 
-int nGrain;
+int nGrain; // Number of used/active grains on screen
 
 int time = FRAMERATE * 60, score = 0, height = 0, dispscore = 0;
-int hiScore[2] = {0, 0};
+int hiScore[2] = {0, 0}; // {Score, Height}
 int dispPos, upperLine, rollCount;
-char score_path[512];
+char *score_path;
 
-SDL_Surface *video, *layer;
-SDL_Rect layerRect;
+SDL_Surface *video; // The actual area of the window displayed to the player
+SDL_Surface *layer; // Internal buffer, blitted to the real screen
+SDL_Rect layerRect; // Size of the screen, for blitting functions
+
 unsigned char *vBuffer = NULL;
 
 unsigned char *keys;
 int exec = 1;
-int interval = 0;
+int interval = 0; // How fast the game logic updates
+/* FIXME font character width and height should be attached to
+the font it belongs to */
 int font_posX = 0, font_posY = 0, font_width = 4, font_height = 6;
 unsigned char font_fgcolor = 3, font_bgcolor = 0, font_bgclear = 0;
 const unsigned char *font_adr = FONT6;
@@ -48,26 +57,38 @@ const unsigned char *font_adr = FONT6;
 int fullscreen = 0;
 int zoom = 4;
 
+/* Initialization routine:
+- TODO What is vBuffer, interval
+- Figure out where to save the high scores
+- Load existing high scores
+- Seed the RNG
+*/
 void pceAppInit(void)
 {
 	vBuffer = vbuff;
-	interval = 1000 / FRAMERATE;
+	interval = 1000 / FRAMERATE; // FIXME detach game logic from framerate
 
-	memset(vbuff, 0, 128 * 88);
+	memset(vbuff, 0, GAME_WIDTH * GAME_HEIGHT);
 
-	snprintf(score_path, 512, "%s/%s", getenv("HOME"), ".spout.sco");
+	if ((score_path = getenv("HOME"))) {
+		strcat(score_path, "/.spout.sco");
+	} else {
+		score_path = "./spout.sco";
+	}
 
 	{
 		int fa;
 		if((fa = open(score_path, O_RDONLY)) != -1) {
-			read (fa, (void *) hiScore, 8);
+			read (fa, (void *) hiScore, sizeof(int[2]));
 			close(fa);
 		}
 	}
 
-	srand(SDL_GetTicks());
+	srand((unsigned)SDL_GetTicks());
 }
 
+
+// Main game logic but oh my God
 void pceAppProc()
 {
 	static int gamePhase = 0, gameover;
@@ -98,7 +119,7 @@ void pceAppProc()
 				hiScore[0] = score;
 				hiScore[1] = height;
 				if((fa = open(score_path, O_CREAT | O_WRONLY | O_TRUNC)) != -1) {
-					write(fa, (void *) hiScore, 8);
+					write(fa, (void *) hiScore, sizeof(int[2]));
 					close(fa);
 				}
 			}
@@ -115,7 +136,6 @@ void pceAppProc()
 				v2g[i] = NULL;
 			}
 			initGrain();
-			nGrain = 0;
 		}
 
 		if(gamePhase & 2) {
@@ -551,7 +571,6 @@ void pceAppProc()
 
 			if(f) {
 				*(vbuff2 + pG->pos) = pG->color;
-				nGrain --;
 				*(v2g + pG->pos) = NULL;
 				pG = freeGrain(pG);
 			} else {
@@ -701,7 +720,6 @@ void spout(int t, int x, int y)
 			pG->pos = t;
 			*(vbuff2 + t) = pG->color;
 			v2g[t] = pG;
-			nGrain ++;
 		}
 	}
 }
@@ -717,7 +735,6 @@ void sweep(unsigned char c1, unsigned char c2)
 			ppG = v2g + (int)(pC - vbuff2);
 			freeGrain(*ppG);
 			*ppG = NULL;
-			nGrain --;
 		}
 		*pC++ = c1;
 	}
@@ -732,6 +749,8 @@ void sweep(unsigned char c1, unsigned char c2)
 	}
 }
 
+/* Initialize the linked list of grains
+and add them to the list of unused grains */
 void initGrain(void)
 {
 	int i;
@@ -744,6 +763,8 @@ void initGrain(void)
 	grainFreeLink = grain;
 	grainUseLink = NULL;
 
+	nGrain = 0;
+
 	return;
 }
 
@@ -751,7 +772,7 @@ GRAIN *allocGrain(void)
 {
 	GRAIN *current = grainFreeLink;
 
-	if(current) {
+	if(current) { // This'll be NULL ergo FALSE if there are no more free links
 		grainFreeLink = current->next; // FIXME segfault when compiled as x86_64
 
 		current->next = grainUseLink;
@@ -761,6 +782,8 @@ GRAIN *allocGrain(void)
 		}
 		grainUseLink = current;
 	}
+
+	nGrain ++;
 
 	return current;
 }
@@ -781,6 +804,8 @@ GRAIN *freeGrain(GRAIN *current)
 	current->next = grainFreeLink;
 	grainFreeLink = current;
 
+	nGrain --;
+
 	return next;
 }
 
@@ -789,31 +814,30 @@ void initSDL() {
 
 	if(SDL_Init(SDL_INIT_VIDEO) < 0) {
 		fprintf(stderr, "Couldn't initialize SDL: %s\n",SDL_GetError());
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 	atexit(SDL_Quit);
 
-	if(fullscreen)
-		video = SDL_SetVideoMode(SDL_WIDTH, SDL_HEIGHT, 8, SDL_DOUBLEBUF | SDL_HWSURFACE | SDL_HWPALETTE | SDL_FULLSCREEN);
-	else
-		video = SDL_SetVideoMode(SDL_WIDTH, SDL_HEIGHT, 8, SDL_DOUBLEBUF | SDL_HWSURFACE | SDL_HWPALETTE);
-	if(video == NULL) {
+	Uint32 videoflags = SDL_DOUBLEBUF | SDL_HWSURFACE | SDL_HWPALETTE;
+	if (fullscreen)
+		videoflags |= SDL_FULLSCREEN;
+
+	video = SDL_SetVideoMode(SDL_WIDTH, SDL_HEIGHT, 8, videoflags);
+	if(!video) {
 		fprintf(stderr, "Couldn't set video mode: %s\n", SDL_GetError());
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	pfrm = video->format;
 	layer = SDL_CreateRGBSurface(SDL_SWSURFACE, SDL_WIDTH, SDL_HEIGHT, 8, pfrm->Rmask, pfrm->Gmask, pfrm->Bmask, pfrm->Amask);
 	if(layer == NULL) {
 		fprintf(stderr, "Couldn't create surface: %s\n", SDL_GetError());
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
-	layerRect.x = 0;
-	layerRect.y = 0;
-	layerRect.w = SDL_WIDTH;
-	layerRect.h = SDL_HEIGHT;
+	layerRect = (SDL_Rect){0, 0, SDL_WIDTH, SDL_HEIGHT};
 
+	// Define and apply the grayscale colormap for the game
 	{
 		static SDL_Color pltTbl[4] = {
 			{255, 255, 255, 0},
@@ -826,13 +850,21 @@ void initSDL() {
 	}
 }
 
+/* Apply zoom to the internal representation of the screen,
+ * then take the zoomed image and blit it to the real display */
 void pceLCDTrans() {
 	int x, y;
-	unsigned char *vbi, *bi;
+	unsigned char *vbi; // Pointers into the internal video buffer
+	unsigned char *bi; // The software surface with the zoomed image
 
 	bi = layer->pixels;
 	for(y = 0; y < SDL_HEIGHT; y ++) {
-		vbi = vBuffer + (y / zoom) * 128;
+		/* Integer division will always produce an integer
+		 * and it will always "round down"
+		 *
+		 * That makes this a terse trick to repeat
+		 * the same pixel value "zoom" times */
+		vbi = vBuffer + (y / zoom) * GAME_WIDTH; // Beginning of one line
 		for(x = 0; x < SDL_WIDTH; x ++) {
 			*bi ++ = *(vbi + x / zoom);
 		}
@@ -843,10 +875,19 @@ void pceLCDTrans() {
 	SDL_Flip(video);
 }
 
+/* Poll the keys the game uses and generate a bitmask in the internal format
+- Lower 8 bits are which keys are currently being held
+- Upper 8 bits are which keys have pressed or released since the last poll
+*/
 int pcePadGet() {
+	/* Static to keep old value between calls
+	FIXME don't do that, it's not obvious what's happening!
+	keep the old value as game state elsewhere */
 	static int pad = 0;
-	int i = 0, op = pad & 0x00ff;
+	int i = 0;
+	int op = pad & 0x00ff; // The previous state of the keys
 
+	// SDL's key mapping
 	int k[] = {
 		SDLK_UP,		SDLK_DOWN,		SDLK_LEFT,		SDLK_RIGHT,
 		SDLK_KP8,		SDLK_KP2,		SDLK_KP4,		SDLK_KP6,
@@ -854,6 +895,7 @@ int pcePadGet() {
 		SDLK_ESCAPE,	SDLK_LSHIFT,	SDLK_RSHIFT
 	};
 
+	// Internal key mapping
 	int p[] = {
 		PAD_UP,			PAD_DN,			PAD_LF,			PAD_RI,
 		PAD_UP,			PAD_DN,			PAD_LF,			PAD_RI,
@@ -862,16 +904,13 @@ int pcePadGet() {
 		-1
 	};
 
-	pad = 0;
+	pad = 0; // Reset the key state to zero
 
-	do {
-		if(keys[k[i]] == SDL_PRESSED) {
-			pad |= p[i];
-		}
-		i ++;
-	} while(p[i] >= 0);
+	for (i = 0; p[i] >= 0; i++)
+		if(keys[k[i]] == SDL_PRESSED)
+			pad |= p[i]; // Build up a bitmask of pressed keys
 
-	pad |= (pad & (~op)) << 8;
+	pad |= (pad & (~op)) << 8; // Prepend which keys changed state
 
 	return pad;
 }
@@ -986,10 +1025,9 @@ int main(int argc, char *argv[])
 		}
 
 		pceAppProc();
-	//	SDL_Flip(video);
 
 		nextTick += interval;
-
+		// FIXME why does this check the SDL keys directly instead of use pcePadGet()?
 		if((keys[SDLK_ESCAPE] == SDL_PRESSED && (keys[SDLK_LSHIFT] == SDL_PRESSED || keys[SDLK_RSHIFT] == SDL_PRESSED)) || event.type == SDL_QUIT) {
 			exec = 0;
 		}
