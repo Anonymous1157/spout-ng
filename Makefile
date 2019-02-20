@@ -6,9 +6,7 @@ MANPREFIX ?= ${PREFIX}/share/man/man1
 CFLAGS = -m32 -O0 -g3 $(shell pkg-config --cflags sdl) -Wall -Wextra -Wpedantic -Werror
 LDFLAGS = -m32 -O0 -g3 $(shell pkg-config --libs sdl)
 
-src/spout: src/spout.o
-
-src/spout.o: src/spout.c src/font.h src/sintable.h src/spout.h src/matsumi.h
+src/spout: src/spout.c src/font.h src/sintable.h src/spout.h src/matsumi.h
 
 clean:
 	${RM} src/spout.o src/spout
