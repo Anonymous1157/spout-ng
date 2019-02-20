@@ -34,8 +34,8 @@ int mR;
 
 int nGrain; // Number of used/active grains on screen
 
-int time = FRAMERATE * 60, score = 0, height = 0, dispscore = 0;
-int hiScore[2] = {0, 0}; // {Score, Height}
+int time, score, height, dispscore;
+int hiScore[2]; // {Score, Height}
 int dispPos, upperLine, rollCount;
 char *score_path;
 
@@ -46,13 +46,16 @@ SDL_Rect layerRect; // Size of the screen, for blitting functions
 unsigned char *vBuffer = NULL;
 
 unsigned char *keys;
-int exec = 1;
-int interval = 0; // How fast the game logic updates
+int exec = 1; // FIXME game should init state in pceAppInit()
+int interval; // How fast the game logic updates
 /* FIXME font character width and height should be attached to
-the font it belongs to */
-int font_posX = 0, font_posY = 0, font_width = 4, font_height = 6;
+ * the font it belongs to
+ *
+ * FIXME game should init font before using it for the first time */
+int font_posX, font_posY, font_width, font_height;
 unsigned char font_fgcolor = 3, font_bgcolor = 0, font_bgclear = 0;
 const unsigned char *font_adr = FONT6;
+
 
 int fullscreen = 0;
 int zoom = 4;
@@ -267,17 +270,17 @@ void pceAppProc()
 				}
 
 				if(upperLine == 111 && height > 0) {
-					unsigned long *pL;
-					pL = (unsigned long *)(vbuff2 + 128 * 108 + 4);
-					while(pL < (unsigned long *)(vbuff2 + 128 * 109 - 4)) {
+					unsigned int *pL;
+					pL = (unsigned int *)(vbuff2 + 128 * 108 + 4);
+					while(pL < (unsigned int *)(vbuff2 + 128 * 109 - 4)) {
 						*pL++ = 0;
 					}
 					pL += 2;
-					while(pL < (unsigned long *)(vbuff2 + 128 * 110 - 4)) {
+					while(pL < (unsigned int *)(vbuff2 + 128 * 110 - 4)) {
 						*pL++ = 0xd3d3d3d3;
 					}
 					pL += 2;
-					while(pL < (unsigned long *)(vbuff2 + 128 * 111 - 4)) {
+					while(pL < (unsigned int *)(vbuff2 + 128 * 111 - 4)) {
 						*pL++ = 0;
 					}
 				}
@@ -326,17 +329,17 @@ void pceAppProc()
 			int i, j;
 
 			if((upperLine & 31) == 0) {
-				unsigned long *pL; // FIXME "unsigned long" changes size by platform
+				unsigned int *pL; // TODO fixed "unsigned long" problem, but now make it use uint32_t
 				vBuffer = vbuff2 + ((upperLine - 24) & 127) * 128;
 				pceFontSetBkColor(0);
 
 				switch(upperLine / 32) {
 					case 0:
-						pL = (unsigned long *)(vbuff2 + 12 + ((upperLine - 24) & 127) * 128);
+						pL = (unsigned int *)(vbuff2 + 12 + ((upperLine - 24) & 127) * 128);
 						for(i = 0; i < 16; i ++) {
 							for(j = 0; j < 26 / 2; j ++) {
 								*pL = 0x91919191;
-								pL += 2; // FIXME This is the line that breaks grainFreeLink
+								pL += 2;
 							}
 							if((i & 7) == 3) {
 								pL += 7;
@@ -584,13 +587,13 @@ void pceAppProc()
 	dispPos = upperLine;
 
 	{
-		unsigned long *pL, *pL2, *pLe;
-		pL = (unsigned long *)(vbuff + 2 * 128);
-		pL2 = (unsigned long *)(vbuff2 + dispPos * 128);
+		unsigned int *pL, *pL2, *pLe;
+		pL = (unsigned int *)(vbuff + 2 * 128);
+		pL2 = (unsigned int *)(vbuff2 + dispPos * 128);
 
 		pLe = pL2 + 128 * 78 / 4;
-		if(pLe > (unsigned long *)(vbuff2 + 128 * 128)) {
-			pLe = (unsigned long *)(vbuff2 + 128 * 128);
+		if(pLe > (unsigned int *)(vbuff2 + 128 * 128)) {
+			pLe = (unsigned int *)(vbuff2 + 128 * 128);
 		}
 
 		while(pL2 < pLe) {
@@ -599,8 +602,8 @@ void pceAppProc()
 			pL2 ++;
 		}
 
-		pL2 = (unsigned long *)(vbuff2);
-		while(pL < (unsigned long *)(vbuff + 128 * (78 + 2))) {
+		pL2 = (unsigned int *)(vbuff2);
+		while(pL < (unsigned int *)(vbuff + 128 * (78 + 2))) {
 			*pL = *pL2 & 0x03030303;
 			pL ++;
 			pL2 ++;
